@@ -33,6 +33,7 @@ THREAD_ENV_KEYS = (
     "MKL_NUM_THREADS",
     "VECLIB_MAXIMUM_THREADS",
     "NUMEXPR_NUM_THREADS",
+    "NPY_NUM_THREADS",
 )
 
 
@@ -53,6 +54,44 @@ def _parse_key_value_block(text: str, key: str) -> str | None:
         stripped = line.strip()
         if stripped.startswith(prefix):
             return stripped[len(prefix) :].strip()
+    return None
+
+
+def _linux_cpu_model() -> str | None:
+    lscpu = _command_output(["lscpu"])
+    if lscpu:
+        for key in ("Model name", "Architecture"):
+            value = _parse_key_value_block(lscpu, key)
+            if value and value.lower() not in {"x86_64", "amd64", "aarch64", "arm64"}:
+                return value
+
+    cpuinfo = Path("/proc/cpuinfo")
+    try:
+        for line in cpuinfo.read_text(encoding="utf-8").splitlines():
+            if ":" not in line:
+                continue
+            key, value = (part.strip() for part in line.split(":", 1))
+            if key in {"model name", "Hardware", "Processor"} and value:
+                if value.lower() not in {"x86_64", "amd64", "aarch64", "arm64"}:
+                    return value
+    except OSError:
+        pass
+
+    return None
+
+
+def _linux_model_name() -> str | None:
+    candidates = (
+        Path("/sys/devices/virtual/dmi/id/product_name"),
+        Path("/sys/devices/virtual/dmi/id/board_name"),
+    )
+    for path in candidates:
+        try:
+            value = path.read_text(encoding="utf-8").strip()
+        except OSError:
+            continue
+        if value and value.lower() not in {"default string", "to be filled by o.e.m."}:
+            return value
     return None
 
 
@@ -100,7 +139,8 @@ def sanitize_system_info(system_info: dict[str, Any]) -> dict[str, Any]:
         "numba_threads": system_info.get("numba_threads"),
     }
 
-    for key in ("cpu_freq_mhz", "cpu_freq_max_mhz", "model_name", "chip"):
+    for key in ("cpu_freq_mhz", "cpu_freq_max_mhz", "model_name", "chip",
+                 "blas_backend", "blas_version", "lapack_backend", "lapack_version"):
         if system_info.get(key) is not None:
             sanitized[key] = system_info[key]
 
@@ -130,6 +170,18 @@ def get_system_info() -> dict[str, Any]:
         info["cpu_freq_mhz"] = float(freq.current)
         info["cpu_freq_max_mhz"] = float(freq.max)
 
+    try:
+        np_config = np.show_config(mode="dicts")
+        deps = np_config.get("Build Dependencies", {})
+        for lib in ("blas", "lapack"):
+            lib_info = deps.get(lib, {})
+            if lib_info:
+                info[f"{lib}_backend"] = lib_info.get("name") or lib_info.get("detection method", "unknown")
+                if lib_info.get("version"):
+                    info[f"{lib}_version"] = lib_info["version"]
+    except Exception:
+        pass
+
     if platform.system() == "Darwin":
         processor = _command_output(["sysctl", "-n", "machdep.cpu.brand_string"])
         hw_info = _command_output(["system_profiler", "SPHardwareDataType"])
@@ -140,6 +192,13 @@ def get_system_info() -> dict[str, Any]:
                 value = _parse_key_value_block(hw_info, key)
                 if value:
                     info[key.lower().replace(" ", "_")] = value
+    elif platform.system() == "Linux":
+        processor = _linux_cpu_model()
+        model_name = _linux_model_name()
+        if processor:
+            info["processor"] = processor
+        if model_name:
+            info["model_name"] = model_name
 
     return sanitize_system_info(info)
 
@@ -169,6 +228,11 @@ def print_system_info(info: dict[str, Any]) -> None:
     print(f"  Torch        : {info['torch_version']}")
     print(f"  RAM Total    : {info['memory_total_bytes'] / 1e9:.1f} GB")
     print(f"  RAM Free     : {info['memory_available_bytes'] / 1e9:.1f} GB")
+    if info.get("blas_backend"):
+        blas = info["blas_backend"]
+        if info.get("blas_version"):
+            blas += f" {info['blas_version']}"
+        print(f"  BLAS         : {blas}")
     print("=" * 72)
     print()
 
@@ -523,6 +587,7 @@ def print_measurement_assessment(
         "quick": 0.10,
         "default": 0.20,
         "full": 0.20,
+        "fixed": 0.20,
     }
     min_runtime = min_runtime_by_profile.get(profile, 0.10)
 

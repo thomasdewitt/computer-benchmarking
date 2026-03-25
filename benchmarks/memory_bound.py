@@ -5,30 +5,21 @@ import numpy as np
 from .harness import BenchmarkSpec
 
 
-TARGET_BYTES = 8 * 1024 * 1024 * 1024
-MEMORY_FRACTION = 0.85
-
-
-def _bounded_bytes(
-    system_info: dict | None,
-    *,
-    working_set_factor: float = 1.0,
-) -> int:
-    target = TARGET_BYTES
-    if system_info is None:
-        return int(target / max(working_set_factor, 1.0))
-    available = int(system_info["memory_available_bytes"])
-    budget = int(available * MEMORY_FRACTION / max(working_set_factor, 1.0))
-    return max(256 * 1024 * 1024, min(target, budget))
+WRITE_BYTES = 2_571_053_986
+COPY_BYTES = 1_414_079_692
+TRANSPOSE_BYTES = 1_414_079_692
+SORT_BYTES = 942_719_795
+MASK_BYTES = 1_131_263_754
 
 
 def get_benchmarks(system_info: dict | None = None) -> list[BenchmarkSpec]:
+    del system_info
     itemsize = np.dtype(np.float32).itemsize
-    write_bytes = _bounded_bytes(system_info, working_set_factor=1.1)
-    copy_bytes = _bounded_bytes(system_info, working_set_factor=2.0)
-    transpose_bytes = _bounded_bytes(system_info, working_set_factor=2.0)
-    sort_bytes = _bounded_bytes(system_info, working_set_factor=3.0)
-    mask_bytes = _bounded_bytes(system_info, working_set_factor=2.5)
+    write_bytes = WRITE_BYTES
+    copy_bytes = COPY_BYTES
+    transpose_bytes = TRANSPOSE_BYTES
+    sort_bytes = SORT_BYTES
+    mask_bytes = MASK_BYTES
 
     write_count = write_bytes // itemsize
     copy_count = copy_bytes // itemsize

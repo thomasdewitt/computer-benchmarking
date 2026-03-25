@@ -28,7 +28,7 @@ CATEGORY_MODULES = {
     "compute_bound": "benchmarks.compute_bound",
 }
 
-RUN_PROFILE = "default"
+RUN_PROFILE = "fixed"
 
 def load_specs(categories: Iterable[str], system_info: dict) -> list:
     specs = []

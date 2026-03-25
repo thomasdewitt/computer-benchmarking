@@ -110,6 +110,16 @@ def _format_system_table(system_info: dict[str, Any]) -> str:
             ("RAM Total (GB)", f"{system_info['memory_total_bytes'] / 1e9:.1f}"),
         ]
     )
+    if system_info.get("blas_backend"):
+        blas_label = system_info["blas_backend"]
+        if system_info.get("blas_version"):
+            blas_label += f" {system_info['blas_version']}"
+        rows.append(("BLAS", blas_label))
+    if system_info.get("lapack_backend") and system_info.get("lapack_backend") != system_info.get("blas_backend"):
+        lapack_label = system_info["lapack_backend"]
+        if system_info.get("lapack_version"):
+            lapack_label += f" {system_info['lapack_version']}"
+        rows.append(("LAPACK", lapack_label))
     lines = ["| Key | Value |", "| --- | --- |"]
     for key, value in rows:
         lines.append(f"| {key} | {value} |")

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +13,36 @@ from report import (
     machine_label,
     run_timestamp,
 )
+
+
+def _machine_columns(runs: list[dict]) -> list[tuple[str, dict]]:
+    counts: dict[str, int] = defaultdict(int)
+    columns: list[tuple[str, dict]] = []
+    for payload in runs:
+        label = machine_label(payload)
+        counts[label] += 1
+        if counts[label] > 1:
+            label = f"{label} ({counts[label]})"
+        columns.append((label, payload))
+    return columns
+
+
+def _results_by_name(payload: dict) -> dict[str, dict]:
+    return {row["name"]: row for row in payload["results"] if row["status"] == "ok"}
+
+
+def _benchmark_rows(runs: list[dict]) -> list[tuple[str, str]]:
+    ordered: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for category in CATEGORY_ORDER:
+        for payload in runs:
+            for row in payload["results"]:
+                key = (row["category"], row["name"])
+                if row["category"] != category or key in seen:
+                    continue
+                seen.add(key)
+                ordered.append(key)
+    return ordered
 
 
 def generate_summary(
@@ -31,6 +62,8 @@ def generate_summary(
         latest_runs.values(),
         key=lambda payload: category_total_times(payload["results"]).get("overall", 0.0),
     )
+    machine_columns = _machine_columns(runs)
+    benchmark_rows = _benchmark_rows(runs)
 
     lines = [
         "# Benchmark Summary",
@@ -55,6 +88,28 @@ def generate_summary(
             f"{totals.get('compute_bound', 0.0):,.2f} | "
             f"{run_timestamp(payload)} | `{payload['_path'].name}` |"
         )
+
+    lines.extend(
+        [
+            "",
+            "## Benchmark Matrix",
+            "",
+            "Each row is one benchmark. Values are wall time in seconds for the latest saved run per machine.",
+            "",
+        ]
+    )
+
+    header = ["Benchmark", "Workflow Type", *[label for label, _ in machine_columns]]
+    lines.append("| " + " | ".join(header) + " |")
+    lines.append("| " + " | ".join(["---", "---", *(["---:"] * len(machine_columns))]) + " |")
+
+    run_results = {id(payload): _results_by_name(payload) for payload in runs}
+    for category, benchmark_name in benchmark_rows:
+        row = [benchmark_name, category.replace("_", " ").title()]
+        for _, payload in machine_columns:
+            result = run_results[id(payload)].get(benchmark_name)
+            row.append(f"{result['wall_time_sec']:,.2f}" if result is not None else "")
+        lines.append("| " + " | ".join(row) + " |")
 
     output_path.write_text("\n".join(lines), encoding="utf-8")
     return output_path
