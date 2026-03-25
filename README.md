@@ -26,7 +26,7 @@ python run.py --output results
 python summary.py
 ```
 
-The suite now uses a single fixed workload path based on the historical M1 `full` run. Every machine executes the same benchmark sizes, including fixed memory-bound byte counts. The FIF benchmark uses a fixed `8192 x 8192` field.
+The suite uses fixed workload sizes (halved from the original M1 `full` run). Every machine executes the same benchmark sizes, including fixed memory-bound byte counts. The FIF benchmark uses a fixed `8192 x 4096` field.
 
 ## Outputs
 

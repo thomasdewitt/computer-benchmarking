@@ -12,7 +12,7 @@ from .algorithms import (
 from .harness import BenchmarkSpec
 
 
-FIF_SHAPE = (8192, 8192)
+FIF_SHAPE = (8192, 4096)
 ANALYSIS_SHAPE = (4096, 4096)
 CORR_PRF = 10.0
 CONV_SHAPE = (768, 768, 384)
