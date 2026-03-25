@@ -5,38 +5,30 @@ import numpy as np
 from .harness import BenchmarkSpec
 
 
-PROFILE_BYTES = {
-    "quick": 8 * 1024 * 1024 * 1024,
-    "default": 6 * 1024 * 1024 * 1024,
-    "full": 8 * 1024 * 1024 * 1024,
-}
+TARGET_BYTES = 8 * 1024 * 1024 * 1024
+MEMORY_FRACTION = 0.85
+
 
 def _bounded_bytes(
-    profile: str,
     system_info: dict | None,
     *,
     working_set_factor: float = 1.0,
 ) -> int:
-    target = PROFILE_BYTES[profile]
+    target = TARGET_BYTES
     if system_info is None:
         return int(target / max(working_set_factor, 1.0))
     available = int(system_info["memory_available_bytes"])
-    memory_fraction = {
-        "quick": 0.80,
-        "default": 0.70,
-        "full": 0.85,
-    }[profile]
-    budget = int(available * memory_fraction / max(working_set_factor, 1.0))
+    budget = int(available * MEMORY_FRACTION / max(working_set_factor, 1.0))
     return max(256 * 1024 * 1024, min(target, budget))
 
 
-def get_benchmarks(profile: str, system_info: dict | None = None) -> list[BenchmarkSpec]:
+def get_benchmarks(system_info: dict | None = None) -> list[BenchmarkSpec]:
     itemsize = np.dtype(np.float32).itemsize
-    write_bytes = _bounded_bytes(profile, system_info, working_set_factor=1.1)
-    copy_bytes = _bounded_bytes(profile, system_info, working_set_factor=2.0)
-    transpose_bytes = _bounded_bytes(profile, system_info, working_set_factor=2.0)
-    sort_bytes = _bounded_bytes(profile, system_info, working_set_factor=3.0)
-    mask_bytes = _bounded_bytes(profile, system_info, working_set_factor=2.5)
+    write_bytes = _bounded_bytes(system_info, working_set_factor=1.1)
+    copy_bytes = _bounded_bytes(system_info, working_set_factor=2.0)
+    transpose_bytes = _bounded_bytes(system_info, working_set_factor=2.0)
+    sort_bytes = _bounded_bytes(system_info, working_set_factor=3.0)
+    mask_bytes = _bounded_bytes(system_info, working_set_factor=2.5)
 
     write_count = write_bytes // itemsize
     copy_count = copy_bytes // itemsize

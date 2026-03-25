@@ -12,51 +12,17 @@ from .algorithms import (
 from .harness import BenchmarkSpec
 
 
-PROFILE_FIF_SHAPE = {
-    "quick": (6144, 6144),
-    "default": (4096, 4096),
-    "full": (8192, 8192),
-}
-
-PROFILE_ANALYSIS_SHAPE = {
-    "quick": (1792, 1792),
-    "default": (1280, 1280),
-    "full": (4096, 4096),
-}
-
-PROFILE_CORR_PRF = {
-    "quick": 10.0,
-    "default": 10.0,
-    "full": 10.0,
-}
-
-PROFILE_CONV_SHAPE = {
-    "quick": ((416, 416, 208), (15, 15, 5)),
-    "default": ((288, 288, 144), (15, 15, 5)),
-    "full": ((768, 768, 384), (15, 15, 5)),
-}
-
-PROFILE_MATMUL = {
-    "quick": 9216,
-    "default": 6144,
-    "full": 14_336,
-}
-
-PROFILE_SVD = {
-    "quick": (5376, 2688),
-    "default": (3072, 1536),
-    "full": (10_240, 5120),
-}
+FIF_SHAPE = (8192, 4096)
+ANALYSIS_SHAPE = (4096, 4096)
+CORR_PRF = 10.0
+CONV_SHAPE = (768, 768, 384)
+KERNEL_SHAPE = (15, 15, 5)
+MATMUL_SIZE = 14_336
+SVD_SHAPE = (10_240, 5120)
 
 
-def _fif_shape(profile: str, system_info: dict | None) -> tuple[int, int]:
-    target = PROFILE_FIF_SHAPE[profile]
-    if system_info is None:
-        return target
-    total_gb = system_info["memory_total_bytes"] / 1e9
-    if profile == "full" and total_gb > 30.0:
-        return (12_288, 12_288)
-    return target
+def _fif_shape(system_info: dict | None) -> tuple[int, int]:
+    return FIF_SHAPE
 
 
 def _setup_matmul_state(state: dict[str, np.ndarray | torch.Tensor], size: int) -> None:
@@ -74,12 +40,13 @@ def _setup_matmul_state(state: dict[str, np.ndarray | torch.Tensor], size: int) 
     )
 
 
-def get_benchmarks(profile: str, system_info: dict | None = None) -> list[BenchmarkSpec]:
-    fif_shape = _fif_shape(profile, system_info)
-    analysis_shape = PROFILE_ANALYSIS_SHAPE[profile]
-    conv_shape, kernel_shape = PROFILE_CONV_SHAPE[profile]
-    matmul_size = PROFILE_MATMUL[profile]
-    svd_shape = PROFILE_SVD[profile]
+def get_benchmarks(system_info: dict | None = None) -> list[BenchmarkSpec]:
+    fif_shape = _fif_shape(system_info)
+    analysis_shape = ANALYSIS_SHAPE
+    conv_shape = CONV_SHAPE
+    kernel_shape = KERNEL_SHAPE
+    matmul_size = MATMUL_SIZE
+    svd_shape = SVD_SHAPE
     fif_state: dict[str, torch.Tensor] = {}
     corr_state: dict[str, np.ndarray] = {}
     conv_state: dict[str, np.ndarray] = {}
@@ -95,7 +62,7 @@ def get_benchmarks(profile: str, system_info: dict | None = None) -> list[Benchm
             "finite_fraction": float(np.isfinite(field_np).mean()),
         }
 
-    corr_prf = PROFILE_CORR_PRF[profile]
+    corr_prf = CORR_PRF
 
     def run_correlation_dimension():
         return correlation_dimension(

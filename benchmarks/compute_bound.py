@@ -8,35 +8,11 @@ import numpy as np
 from .harness import BenchmarkSpec
 
 
-PROFILE_MANDELBROT = {
-    "quick": (4608, 4608, 2000),
-    "default": (3072, 3072, 1200),
-    "full": (4608, 4608, 20_000),
-}
-
-PROFILE_MONTE_CARLO = {
-    "quick": 60_000_000_000,
-    "default": 18_000_000_000,
-    "full": 600_000_000_000,
-}
-
-PROFILE_TRANS = {
-    "quick": (1_048_576, 1800),
-    "default": (786_432, 900),
-    "full": (1_048_576, 20_000),
-}
-
-PROFILE_NBODY = {
-    "quick": 131_072,
-    "default": 65_536,
-    "full": 425_984,
-}
-
-PROFILE_EIGH = {
-    "quick": 4352,
-    "default": 3072,
-    "full": 10_240,
-}
+MANDELBROT = (4608, 4608, 20_000)
+MONTE_CARLO_SAMPLES = 600_000_000_000
+TRANS_SIZE = (1_048_576, 20_000)
+NBODY_PARTICLES = 425_984
+EIGH_SIZE = 10_240
 
 
 def _symmetric_matrix(size: int) -> np.ndarray:
@@ -121,12 +97,12 @@ def nbody_acceleration(positions: np.ndarray, masses: np.ndarray, softening: flo
     return acceleration
 
 
-def get_benchmarks(profile: str, system_info: dict | None = None) -> list[BenchmarkSpec]:
-    width, height, max_iter = PROFILE_MANDELBROT[profile]
-    monte_carlo_samples = PROFILE_MONTE_CARLO[profile]
-    trans_size, trans_repeats = PROFILE_TRANS[profile]
-    n_particles = PROFILE_NBODY[profile]
-    eigh_size = PROFILE_EIGH[profile]
+def get_benchmarks(system_info: dict | None = None) -> list[BenchmarkSpec]:
+    width, height, max_iter = MANDELBROT
+    monte_carlo_samples = MONTE_CARLO_SAMPLES
+    trans_size, trans_repeats = TRANS_SIZE
+    n_particles = NBODY_PARTICLES
+    eigh_size = EIGH_SIZE
     trans_state: dict[str, np.ndarray] = {}
     nbody_state: dict[str, np.ndarray] = {}
     eigh_state: dict[str, np.ndarray] = {}

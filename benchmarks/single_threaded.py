@@ -15,43 +15,19 @@ from .algorithms import (
 from .harness import BenchmarkSpec
 
 
-PROFILE_STRUCTURE_LENGTH = {
-    "quick": 18_000_000,
-    "default": 2**22,
-    "full": 180_000_000,
-}
-
-PROFILE_SPECTRAL_LENGTH = {
-    "quick": 160_000_000,
-    "default": 2**25,
-    "full": 256_000_000,
-}
-
-PROFILE_BOX_SHAPE = {
-    "quick": (7680, 7680),
-    "default": (6144, 6144),
-    "full": (12_288, 12_288),
-}
-
-PROFILE_PERIMETER_SHAPE = {
-    "quick": (32_768, 32_768),
-    "default": (20_000, 20_000),
-    "full": (40_960, 40_960),
-}
-
-PROFILE_LEVY_SAMPLES = {
-    "quick": 80_000_000,
-    "default": 30_000_000,
-    "full": 100_000_000,
-}
+STRUCTURE_LENGTH = 180_000_000
+SPECTRAL_LENGTH = 256_000_000
+BOX_SHAPE = (12_288, 12_288)
+PERIMETER_SHAPE = (40_960, 40_960)
+LEVY_SAMPLES = 100_000_000
 
 
-def get_benchmarks(profile: str, system_info: dict | None = None) -> list[BenchmarkSpec]:
-    structure_length = PROFILE_STRUCTURE_LENGTH[profile]
-    spectral_length = PROFILE_SPECTRAL_LENGTH[profile]
-    box_shape = PROFILE_BOX_SHAPE[profile]
-    perimeter_shape = PROFILE_PERIMETER_SHAPE[profile]
-    levy_samples = PROFILE_LEVY_SAMPLES[profile]
+def get_benchmarks(system_info: dict | None = None) -> list[BenchmarkSpec]:
+    structure_length = STRUCTURE_LENGTH
+    spectral_length = SPECTRAL_LENGTH
+    box_shape = BOX_SHAPE
+    perimeter_shape = PERIMETER_SHAPE
+    levy_samples = LEVY_SAMPLES
     structure_state: dict[str, np.ndarray] = {}
     spectral_state: dict[str, np.ndarray] = {}
     box_state: dict[str, np.ndarray] = {}

@@ -28,20 +28,21 @@ CATEGORY_MODULES = {
     "compute_bound": "benchmarks.compute_bound",
 }
 
+RUN_PROFILE = "default"
 
-def load_specs(categories: Iterable[str], profile: str, system_info: dict) -> list:
+def load_specs(categories: Iterable[str], system_info: dict) -> list:
     specs = []
     for category in categories:
         module = import_module(CATEGORY_MODULES[category])
-        specs.extend(module.get_benchmarks(profile, system_info))
+        specs.extend(module.get_benchmarks(system_info))
     return specs
 
 
-def list_benchmarks(profile: str, system_info: dict) -> None:
+def list_benchmarks(system_info: dict) -> None:
     for category in CATEGORY_ORDER:
         print(category)
         module = import_module(CATEGORY_MODULES[category])
-        for spec in module.get_benchmarks(profile, system_info):
+        for spec in module.get_benchmarks(system_info):
             print(f"  - {spec.name}: {spec.description}")
 
 
@@ -52,12 +53,6 @@ def parse_args() -> argparse.Namespace:
         action="append",
         choices=CATEGORY_ORDER,
         help="Run only the selected category. May be passed multiple times.",
-    )
-    parser.add_argument(
-        "--profile",
-        choices=("quick", "default", "full"),
-        default="default",
-        help="Problem-size profile for the benchmark inputs.",
     )
     parser.add_argument(
         "--output",
@@ -83,11 +78,11 @@ def main() -> int:
     system_info = get_system_info()
 
     if args.list:
-        list_benchmarks(args.profile, system_info)
+        list_benchmarks(system_info)
         return 0
 
     print_system_info(system_info)
-    specs = load_specs(categories, args.profile, system_info)
+    specs = load_specs(categories, system_info)
     results: list[BenchmarkResult] = []
 
     for spec in specs:
@@ -95,13 +90,13 @@ def main() -> int:
 
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
-    result_path = default_results_path(output_dir, args.profile, system_info)
+    result_path = default_results_path(output_dir, RUN_PROFILE, system_info)
     saved_path = save_results(
         results,
         result_path,
         system_info=system_info,
         run_metadata={
-            "profile": args.profile,
+            "profile": RUN_PROFILE,
             "categories": list(categories),
             "output_dir": str(output_dir),
         },
@@ -112,7 +107,7 @@ def main() -> int:
     print_measurement_assessment(
         results,
         logical_cores=system_info["logical_cores"],
-        profile=args.profile,
+        profile=RUN_PROFILE,
     )
 
     if not args.no_report:

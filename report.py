@@ -7,8 +7,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from benchmarks.harness import machine_label_from_system_info, machine_slug_from_system_info
 
 
@@ -21,30 +19,23 @@ def load_result_files(results_dir: str | Path) -> list[dict[str, Any]]:
     return payloads
 
 
-def compute_scores(rows: list[dict[str, Any]]) -> dict[str, float]:
-    """Score = 1000 / wall_time. Higher = faster."""
+def category_total_times(rows: list[dict[str, Any]]) -> dict[str, float]:
     from benchmarks.harness import CATEGORY_ORDER
 
-    scores: dict[str, float] = {}
-    category_scores: dict[str, list[float]] = defaultdict(list)
+    totals: dict[str, float] = {}
 
+    overall = 0.0
     for row in rows:
         if row["status"] != "ok" or row["wall_time_sec"] <= 0:
             continue
-        score = 1000.0 / row["wall_time_sec"]
-        scores[row["name"]] = score
-        category_scores[row["category"]].append(score)
+        overall += float(row["wall_time_sec"])
+        key = row["category"]
+        totals[key] = totals.get(key, 0.0) + float(row["wall_time_sec"])
 
     for category in CATEGORY_ORDER:
-        values = category_scores.get(category, [])
-        if values:
-            scores[f"_category_{category}"] = float(np.exp(np.mean(np.log(values))))
-
-    overall_values = [scores[key] for key in scores if key.startswith("_category_")]
-    if overall_values:
-        scores["_overall"] = float(np.exp(np.mean(np.log(overall_values))))
-
-    return scores
+        totals.setdefault(category, 0.0)
+    totals["overall"] = overall
+    return totals
 
 
 def machine_label(payload: dict[str, Any]) -> str:
@@ -74,30 +65,28 @@ def run_total_time(payload: dict[str, Any]) -> float:
     )
 
 
-def latest_runs_by_machine_profile(
+def latest_runs_by_machine(
     payloads: list[dict[str, Any]],
-) -> dict[tuple[str, tuple[str, str, str]], dict[str, Any]]:
-    latest: dict[tuple[str, tuple[str, str, str]], dict[str, Any]] = {}
+) -> dict[tuple[str, str, str], dict[str, Any]]:
+    latest: dict[tuple[str, str, str], dict[str, Any]] = {}
     for payload in payloads:
-        key = (run_profile(payload), machine_key(payload))
+        key = machine_key(payload)
         current = latest.get(key)
         if current is None or run_timestamp(payload) > run_timestamp(current):
             latest[key] = payload
     return latest
 
 
-def _format_score_summary(scores: dict[str, float]) -> str:
+def _format_time_summary(totals: dict[str, float]) -> str:
     from benchmarks.harness import CATEGORY_ORDER
 
     lines = [
-        "| Category | Score |",
+        "| Category | Total Time (s) |",
         "| --- | ---: |",
     ]
     for category in CATEGORY_ORDER:
-        key = f"_category_{category}"
-        if key in scores:
-            lines.append(f"| {category.replace('_', ' ').title()} | {scores[key]:,.0f} |")
-    lines.append(f"| **Overall** | **{scores.get('_overall', 0.0):,.0f}** |")
+        lines.append(f"| {category.replace('_', ' ').title()} | {totals.get(category, 0.0):,.2f} |")
+    lines.append(f"| **Overall** | **{totals.get('overall', 0.0):,.2f}** |")
     return "\n".join(lines)
 
 
@@ -127,16 +116,15 @@ def _format_system_table(system_info: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _format_results_table(rows: list[dict[str, Any]], scores: dict[str, float]) -> str:
+def _format_results_table(rows: list[dict[str, Any]]) -> str:
     lines = [
-        "| Benchmark | Status | Time (s) | Score | Peak Mem (GB) | Avg CPU (%) |",
-        "| --- | --- | ---: | ---: | ---: | ---: |",
+        "| Benchmark | Status | Time (s) | Peak Mem (GB) | Avg CPU (%) |",
+        "| --- | --- | ---: | ---: | ---: |",
     ]
     for row in rows:
         lines.append(
             f"| {row['name']} | {row['status']} | {row['wall_time_sec']:.2f} | "
-            f"{scores.get(row['name'], 0.0):.0f} | {row['peak_mem_gb']:.2f} | "
-            f"{row['avg_cpu_pct']:.0f} |"
+            f"{row['peak_mem_gb']:.2f} | {row['avg_cpu_pct']:.0f} |"
         )
     return "\n".join(lines)
 
@@ -168,22 +156,20 @@ def generate_report(
         "",
         "## Run Index",
         "",
-        "| Timestamp | Machine | Profile | Overall Score | Total Time (s) | Result File |",
-        "| --- | --- | --- | ---: | ---: | --- |",
+        "| Timestamp | Machine | Total Time (s) | Result File |",
+        "| --- | --- | ---: | --- |",
     ]
 
     for payload in payloads:
-        scores = compute_scores(payload["results"])
         lines.append(
             f"| {run_timestamp(payload)} | {machine_label(payload)} | "
-            f"{run_profile(payload)} | {scores.get('_overall', 0.0):,.0f} | "
-            f"{run_total_time(payload):.1f} | `{payload['_path'].name}` |"
+            f"{run_total_time(payload):.2f} | `{payload['_path'].name}` |"
         )
 
     lines.extend(["", "## Detailed Runs", ""])
 
     for payload in payloads:
-        scores = compute_scores(payload["results"])
+        totals = category_total_times(payload["results"])
         grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for row in payload["results"]:
             grouped[row["category"]].append(row)
@@ -193,12 +179,12 @@ def generate_report(
                 "<details>",
                 (
                     f"<summary>{run_timestamp(payload)} | {machine_label(payload)} | "
-                    f"{run_profile(payload)} | overall {scores.get('_overall', 0.0):,.0f}</summary>"
+                    f"total {totals.get('overall', 0.0):,.2f} s</summary>"
                 ),
                 "",
                 _format_system_table(payload["system_info"]),
                 "",
-                _format_score_summary(scores),
+                _format_time_summary(totals),
                 "",
             ]
         )
@@ -211,7 +197,7 @@ def generate_report(
                 [
                     f"### {category.replace('_', ' ').title()}",
                     "",
-                    _format_results_table(rows, scores),
+                    _format_results_table(rows),
                     "",
                 ]
             )

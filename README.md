@@ -20,21 +20,19 @@ The suite reproduces the needed `scaleinvariance` and `objscale` algorithms loca
 
 ```bash
 python run.py
-python run.py --profile quick
 python run.py --category parallel
 python run.py --list
 python run.py --output results
 python summary.py
 ```
 
-Default runs are sized to finish on a normal workstation. The `full` profile scales up several workloads and will use an `8192 x 8192` FIF shape when total RAM exceeds 30 GB.
+The suite now uses a single fixed workload path based on the former `full` benchmark sizes. The FIF benchmark uses a fixed `8192 x 4096` field.
 
 ## Outputs
 
 - append-only run log in `RESULTS.md`
 - machine comparison summary in `SUMMARY.md`
 - JSON runs in `results/` with sanitized machine metadata only
-- comparison charts in `results/plots/`
 
 ## Layout
 
