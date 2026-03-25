@@ -15,11 +15,11 @@ from .algorithms import (
 from .harness import BenchmarkSpec
 
 
-STRUCTURE_LENGTH = 180_000_000
-SPECTRAL_LENGTH = 256_000_000
-BOX_SHAPE = (12_288, 12_288)
-PERIMETER_SHAPE = (40_960, 40_960)
-LEVY_SAMPLES = 100_000_000
+STRUCTURE_LENGTH = 90_000_000
+SPECTRAL_LENGTH = 128_000_000
+BOX_SHAPE = (6_144, 6_144)
+PERIMETER_SHAPE = (20_480, 20_480)
+LEVY_SAMPLES = 50_000_000
 
 
 def get_benchmarks(system_info: dict | None = None) -> list[BenchmarkSpec]:
