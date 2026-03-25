@@ -1,0 +1,211 @@
+from __future__ import annotations
+
+import numpy as np
+import torch
+
+from .algorithms import (
+    convolve_periodic_xy_zeropad_z,
+    correlation_dimension,
+    fif_nd_torch,
+    make_multiscale_field,
+)
+from .harness import BenchmarkSpec
+
+
+PROFILE_FIF_SHAPE = {
+    "quick": (6144, 6144),
+    "default": (4096, 4096),
+    "full": (8192, 8192),
+}
+
+PROFILE_ANALYSIS_SHAPE = {
+    "quick": (1792, 1792),
+    "default": (1280, 1280),
+    "full": (4096, 4096),
+}
+
+PROFILE_CORR_PRF = {
+    "quick": 10.0,
+    "default": 10.0,
+    "full": 10.0,
+}
+
+PROFILE_CONV_SHAPE = {
+    "quick": ((416, 416, 208), (15, 15, 5)),
+    "default": ((288, 288, 144), (15, 15, 5)),
+    "full": ((768, 768, 384), (15, 15, 5)),
+}
+
+PROFILE_MATMUL = {
+    "quick": 9216,
+    "default": 6144,
+    "full": 14_336,
+}
+
+PROFILE_SVD = {
+    "quick": (5376, 2688),
+    "default": (3072, 1536),
+    "full": (10_240, 5120),
+}
+
+
+def _fif_shape(profile: str, system_info: dict | None) -> tuple[int, int]:
+    target = PROFILE_FIF_SHAPE[profile]
+    if system_info is None:
+        return target
+    total_gb = system_info["memory_total_bytes"] / 1e9
+    if profile == "full" and total_gb > 30.0:
+        return (12_288, 12_288)
+    return target
+
+
+def _setup_matmul_state(state: dict[str, np.ndarray | torch.Tensor], size: int) -> None:
+    rng_a = np.random.default_rng(43)
+    rng_b = np.random.default_rng(44)
+    mat_a = rng_a.standard_normal((size, size)).astype(np.float64)
+    mat_b = rng_b.standard_normal((size, size)).astype(np.float64)
+    state.update(
+        {
+            "mat_a": mat_a,
+            "mat_b": mat_b,
+            "torch_a": torch.from_numpy(mat_a),
+            "torch_b": torch.from_numpy(mat_b),
+        }
+    )
+
+
+def get_benchmarks(profile: str, system_info: dict | None = None) -> list[BenchmarkSpec]:
+    fif_shape = _fif_shape(profile, system_info)
+    analysis_shape = PROFILE_ANALYSIS_SHAPE[profile]
+    conv_shape, kernel_shape = PROFILE_CONV_SHAPE[profile]
+    matmul_size = PROFILE_MATMUL[profile]
+    svd_shape = PROFILE_SVD[profile]
+    fif_state: dict[str, torch.Tensor] = {}
+    corr_state: dict[str, np.ndarray] = {}
+    conv_state: dict[str, np.ndarray] = {}
+    matmul_state: dict[str, np.ndarray | torch.Tensor] = {}
+    svd_state: dict[str, np.ndarray] = {}
+
+    def run_fif_torch():
+        field = fif_nd_torch(fif_shape, alpha=2.0, c1=0.1, h=0.3, seed=43)
+        field_np = field.detach().cpu().numpy()
+        return {
+            "mean": float(field_np.mean()),
+            "std": float(field_np.std()),
+            "finite_fraction": float(np.isfinite(field_np).mean()),
+        }
+
+    corr_prf = PROFILE_CORR_PRF[profile]
+
+    def run_correlation_dimension():
+        return correlation_dimension(
+            corr_state["binary"],
+            point_reduction_factor=corr_prf,
+            nbins=40,
+            seed=44,
+        )
+
+    def run_direct_convolution():
+        out = convolve_periodic_xy_zeropad_z(conv_state["field"], conv_state["kernel"])
+        return {"mean": float(out.mean()), "std": float(out.std())}
+
+    def run_matmul_numpy():
+        out = matmul_state["mat_a"] @ matmul_state["mat_b"]
+        return {"frobenius_norm": float(np.linalg.norm(out)), "size": matmul_size}
+
+    def run_matmul_torch():
+        out = matmul_state["torch_a"] @ matmul_state["torch_b"]
+        return {"frobenius_norm": float(torch.linalg.norm(out).item()), "size": matmul_size}
+
+    def run_svd():
+        singular_values = np.linalg.svd(
+            svd_state["matrix"],
+            full_matrices=False,
+            compute_uv=False,
+        )
+        return {
+            "largest_singular_value": float(singular_values[0]),
+            "smallest_singular_value": float(singular_values[-1]),
+        }
+
+    return [
+        BenchmarkSpec(
+            category="parallel",
+            name="fif-nd-torch",
+            description="FFT-based 2D FIF cascade using local torch CPU implementation.",
+            runner=run_fif_torch,
+            metadata={"shape": fif_shape, "alpha": 2.0, "C1": 0.1, "H": 0.3},
+            teardown=fif_state.clear,
+        ),
+        BenchmarkSpec(
+            category="parallel",
+            name="correlation-dimension",
+            description="Boundary-point correlation integral with Numba prange and binary-search binning.",
+            runner=run_correlation_dimension,
+            metadata={"shape": analysis_shape, "point_reduction_factor": corr_prf},
+            setup=lambda: corr_state.update(
+                {
+                    "binary": (
+                        make_multiscale_field(analysis_shape, seed=42)
+                        > 0.0
+                    ).astype(np.uint8)
+                }
+            ),
+            warmup=lambda: correlation_dimension(
+                np.pad(np.ones((8, 8), dtype=np.uint8), 4),
+                point_reduction_factor=1.0,
+                nbins=8,
+                seed=1,
+            ),
+            teardown=corr_state.clear,
+        ),
+        BenchmarkSpec(
+            category="parallel",
+            name="direct-convolution-3d",
+            description="3D direct convolution with periodic x/y and zero-padded z.",
+            runner=run_direct_convolution,
+            metadata={"field_shape": conv_shape, "kernel_shape": kernel_shape},
+            setup=lambda: conv_state.update(
+                {
+                    "field": np.random.default_rng(41).standard_normal(conv_shape).astype(np.float32),
+                    "kernel": np.random.default_rng(42).standard_normal(kernel_shape).astype(np.float32),
+                }
+            ),
+            warmup=lambda: convolve_periodic_xy_zeropad_z(
+                np.zeros((8, 8, 8), dtype=np.float32),
+                np.zeros((3, 3, 3), dtype=np.float32),
+            ),
+            teardown=conv_state.clear,
+        ),
+        BenchmarkSpec(
+            category="parallel",
+            name="matmul-numpy",
+            description="Large BLAS-backed numpy dense matrix multiply.",
+            runner=run_matmul_numpy,
+            metadata={"size": matmul_size},
+            setup=lambda: _setup_matmul_state(matmul_state, matmul_size),
+            teardown=matmul_state.clear,
+        ),
+        BenchmarkSpec(
+            category="parallel",
+            name="matmul-torch",
+            description="Large torch CPU dense matrix multiply.",
+            runner=run_matmul_torch,
+            metadata={"size": matmul_size},
+            setup=lambda: _setup_matmul_state(matmul_state, matmul_size),
+            teardown=matmul_state.clear,
+        ),
+        BenchmarkSpec(
+            category="parallel",
+            name="svd",
+            description="Dense singular value decomposition using LAPACK.",
+            runner=run_svd,
+            metadata={"shape": svd_shape},
+            setup=lambda: svd_state.update(
+                {
+                    "matrix": np.random.default_rng(45).standard_normal(svd_shape).astype(np.float64)
+                }
+            ),
+            teardown=svd_state.clear,
+        ),
+    ]

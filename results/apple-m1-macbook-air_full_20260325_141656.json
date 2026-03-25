@@ -1,0 +1,546 @@
+{
+  "schema_version": 2,
+  "system_info": {
+    "generated_at": "2026-03-25T19:47:16.322353+00:00",
+    "system": "Darwin",
+    "machine": "arm64",
+    "python": "3.11.14",
+    "processor": "Apple M1",
+    "logical_cores": 8,
+    "physical_cores": 8,
+    "memory_total_bytes": 8589934592,
+    "memory_available_bytes": 3327246336,
+    "torch_version": "2.5.1",
+    "numba_threads": 8,
+    "cpu_freq_mhz": 3204.0,
+    "cpu_freq_max_mhz": 3204.0,
+    "model_name": "MacBook Air",
+    "chip": "Apple M1",
+    "machine_name": "Apple M1 / MacBook Air",
+    "machine_slug": "apple-m1-macbook-air"
+  },
+  "run_metadata": {
+    "profile": "full",
+    "categories": [
+      "single_threaded",
+      "parallel",
+      "memory_bound",
+      "compute_bound"
+    ],
+    "output_dir": "results"
+  },
+  "results": [
+    {
+      "category": "single_threaded",
+      "name": "structure-function",
+      "description": "First-order structure function with log-spaced lags and log-log fit.",
+      "status": "ok",
+      "threads": 1,
+      "wall_time_sec": 604.554056916968,
+      "peak_mem_gb": 5.867208704,
+      "avg_mem_gb": 2.1946256724704147,
+      "avg_cpu_pct": 45.89906912442397,
+      "peak_cpu_pct": 100.6,
+      "avg_cores_used": 0.4589906912442397,
+      "peak_cores_used": 1.006,
+      "result": {
+        "hurst_estimate": 0.004088956415216447,
+        "hurst_error": 0.0005900840510410954,
+        "n_lags": 119
+      },
+      "metadata": {
+        "length": 180000000
+      },
+      "error": null
+    },
+    {
+      "category": "single_threaded",
+      "name": "spectral-psd",
+      "description": "One-sided FFT power spectrum with logarithmic binning and slope fit.",
+      "status": "ok",
+      "threads": 1,
+      "wall_time_sec": 48.89542979199905,
+      "peak_mem_gb": 4.859232256,
+      "avg_mem_gb": 2.0145910674285714,
+      "avg_cpu_pct": 42.15926339285714,
+      "peak_cpu_pct": 117.4,
+      "avg_cores_used": 0.42159263392857144,
+      "peak_cores_used": 1.1740000000000002,
+      "result": {
+        "hurst_estimate": -0.39644467990970067,
+        "hurst_error": 0.009830530761510648,
+        "n_bins": 48
+      },
+      "metadata": {
+        "length": 256000000
+      },
+      "error": null
+    },
+    {
+      "category": "single_threaded",
+      "name": "box-counting-dimension",
+      "description": "Dyadic coarsening via numpy.add.reduceat for edge-set box counting.",
+      "status": "ok",
+      "threads": 1,
+      "wall_time_sec": 24.014538249990437,
+      "peak_mem_gb": 2.577842176,
+      "avg_mem_gb": 1.6998983210275231,
+      "avg_cpu_pct": 99.94816513761468,
+      "peak_cpu_pct": 116.4,
+      "avg_cores_used": 0.9994816513761468,
+      "peak_cores_used": 1.1640000000000001,
+      "result": {
+        "dimension": 1.7957296119397,
+        "error": 0.05707360234433495,
+        "n_box_sizes": 13
+      },
+      "metadata": {
+        "shape": [
+          12288,
+          12288
+        ]
+      },
+      "error": null
+    },
+    {
+      "category": "single_threaded",
+      "name": "perimeter",
+      "description": "Serial Numba edge-counting perimeter with periodic boundaries.",
+      "status": "ok",
+      "threads": 1,
+      "wall_time_sec": 12.675571667030454,
+      "peak_mem_gb": 2.35536384,
+      "avg_mem_gb": 2.3553542023529412,
+      "avg_cpu_pct": 94.67058823529412,
+      "peak_cpu_pct": 109.8,
+      "avg_cores_used": 0.9467058823529412,
+      "peak_cores_used": 1.0979999999999999,
+      "result": {
+        "perimeter": 1677671670.0,
+        "coverage": 0.500010370016098
+      },
+      "metadata": {
+        "shape": [
+          40960,
+          40960
+        ]
+      },
+      "error": null
+    },
+    {
+      "category": "single_threaded",
+      "name": "levy-noise",
+      "description": "Chambers-Mallows-Stuck extremal Levy noise generation.",
+      "status": "ok",
+      "threads": 1,
+      "wall_time_sec": 12.45807816600427,
+      "peak_mem_gb": 4.437622784,
+      "avg_mem_gb": 2.425913048792793,
+      "avg_cpu_pct": 78.70450450450451,
+      "peak_cpu_pct": 109.1,
+      "avg_cores_used": 0.7870450450450451,
+      "peak_cores_used": 1.091,
+      "result": {
+        "mean": 0.0006139612464338396,
+        "std": 3.4036356819112554,
+        "q95_abs": 3.413163710173797
+      },
+      "metadata": {
+        "samples": 100000000,
+        "alpha": 1.8
+      },
+      "error": null
+    },
+    {
+      "category": "parallel",
+      "name": "fif-nd-torch",
+      "description": "FFT-based 2D FIF cascade using local torch CPU implementation.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 17.085759958950803,
+      "peak_mem_gb": 5.305319424,
+      "avg_mem_gb": 2.81912339566879,
+      "avg_cpu_pct": 177.69617834394904,
+      "peak_cpu_pct": 400.5,
+      "avg_cores_used": 1.7769617834394904,
+      "peak_cores_used": 4.005,
+      "result": {
+        "mean": 1.0,
+        "std": 0.7463961131290103,
+        "finite_fraction": 1.0
+      },
+      "metadata": {
+        "shape": [
+          8192,
+          8192
+        ],
+        "alpha": 2.0,
+        "C1": 0.1,
+        "H": 0.3
+      },
+      "error": null
+    },
+    {
+      "category": "parallel",
+      "name": "correlation-dimension",
+      "description": "Boundary-point correlation integral with Numba prange and binary-search binning.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 270.255033250025,
+      "peak_mem_gb": 1.035452416,
+      "avg_mem_gb": 1.0096085887152317,
+      "avg_cpu_pct": 773.106684602649,
+      "peak_cpu_pct": 867.3,
+      "avg_cores_used": 7.73106684602649,
+      "peak_cores_used": 8.673,
+      "result": {
+        "dimension": 1.9703309613145918,
+        "error": 0.008240946221181027,
+        "n_centers": 40816,
+        "coverage": 0.5003885626792908
+      },
+      "metadata": {
+        "shape": [
+          4096,
+          4096
+        ],
+        "point_reduction_factor": 10.0
+      },
+      "error": null
+    },
+    {
+      "category": "parallel",
+      "name": "direct-convolution-3d",
+      "description": "3D direct convolution with periodic x/y and zero-padded z.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 63.39932362502441,
+      "peak_mem_gb": 3.460595712,
+      "avg_mem_gb": 2.107348798053866,
+      "avg_cpu_pct": 783.0299739357081,
+      "peak_cpu_pct": 836.8,
+      "avg_cores_used": 7.830299739357081,
+      "peak_cores_used": 8.368,
+      "result": {
+        "mean": 0.00042577661224640906,
+        "std": 32.767974853515625
+      },
+      "metadata": {
+        "field_shape": [
+          768,
+          768,
+          384
+        ],
+        "kernel_shape": [
+          15,
+          15,
+          5
+        ]
+      },
+      "error": null
+    },
+    {
+      "category": "parallel",
+      "name": "matmul-numpy",
+      "description": "Large BLAS-backed numpy dense matrix multiply.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 37.60396295902319,
+      "peak_mem_gb": 2.566602752,
+      "avg_mem_gb": 2.162012484316716,
+      "avg_cpu_pct": 728.8926686217009,
+      "peak_cpu_pct": 860.5,
+      "avg_cores_used": 7.288926686217009,
+      "peak_cores_used": 8.605,
+      "result": {
+        "frobenius_norm": 1716628.358197294,
+        "size": 14336
+      },
+      "metadata": {
+        "size": 14336
+      },
+      "error": null
+    },
+    {
+      "category": "parallel",
+      "name": "matmul-torch",
+      "description": "Large torch CPU dense matrix multiply.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 35.377968707995024,
+      "peak_mem_gb": 3.891707904,
+      "avg_mem_gb": 3.016346563389408,
+      "avg_cpu_pct": 773.3288161993769,
+      "peak_cpu_pct": 857.0,
+      "avg_cores_used": 7.733288161993769,
+      "peak_cores_used": 8.57,
+      "result": {
+        "frobenius_norm": 1716628.3581972776,
+        "size": 14336
+      },
+      "metadata": {
+        "size": 14336
+      },
+      "error": null
+    },
+    {
+      "category": "parallel",
+      "name": "svd",
+      "description": "Dense singular value decomposition using LAPACK.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 36.39971304195933,
+      "peak_mem_gb": 0.9375744,
+      "avg_mem_gb": 0.934553711709091,
+      "avg_cpu_pct": 776.9563636363636,
+      "peak_cpu_pct": 850.3,
+      "avg_cores_used": 7.769563636363635,
+      "peak_cores_used": 8.503,
+      "result": {
+        "largest_singular_value": 172.25169099877343,
+        "smallest_singular_value": 29.69942501531697
+      },
+      "metadata": {
+        "shape": [
+          10240,
+          5120
+        ]
+      },
+      "error": null
+    },
+    {
+      "category": "memory_bound",
+      "name": "write-allocate",
+      "description": "Large contiguous float32 materialization dominated by memory writes.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 0.196981415967457,
+      "peak_mem_gb": 2.26689024,
+      "avg_mem_gb": 1.185062912,
+      "avg_cpu_pct": 88.82500000000002,
+      "peak_cpu_pct": 100.4,
+      "avg_cores_used": 0.8882500000000002,
+      "peak_cores_used": 1.004,
+      "result": {
+        "bytes_written": 2571053984,
+        "checksum": 1024.0
+      },
+      "metadata": {
+        "bytes": 2571053986
+      },
+      "error": null
+    },
+    {
+      "category": "memory_bound",
+      "name": "array-copy",
+      "description": "Contiguous float32 array copy to probe sustained memory write bandwidth.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 0.16588533396134153,
+      "peak_mem_gb": 2.580922368,
+      "avg_mem_gb": 2.0750609066666668,
+      "avg_cpu_pct": 99.73333333333335,
+      "peak_cpu_pct": 100.0,
+      "avg_cores_used": 0.9973333333333335,
+      "peak_cores_used": 1.0,
+      "result": {
+        "bytes_moved": 1414079692,
+        "checksum": 41.11164474487305
+      },
+      "metadata": {
+        "bytes": 1414079692
+      },
+      "error": null
+    },
+    {
+      "category": "memory_bound",
+      "name": "transpose-copy-3d",
+      "description": "Large non-contiguous transpose followed by a contiguous materialization.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 0.8505405830219388,
+      "peak_mem_gb": 1.496072192,
+      "avg_mem_gb": 1.14599936,
+      "avg_cpu_pct": 96.475,
+      "peak_cpu_pct": 100.4,
+      "avg_cores_used": 0.96475,
+      "peak_cores_used": 1.004,
+      "result": {
+        "shape": [
+          353,
+          707,
+          707
+        ],
+        "checksum": 32.333587646484375
+      },
+      "metadata": {
+        "bytes": 1414079692
+      },
+      "error": null
+    },
+    {
+      "category": "memory_bound",
+      "name": "float-sort",
+      "description": "Large float32 mergesort stressing memory traffic and cache capacity.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 30.037163291999605,
+      "peak_mem_gb": 2.504310784,
+      "avg_mem_gb": 2.2061564324102565,
+      "avg_cpu_pct": 99.92032967032966,
+      "peak_cpu_pct": 117.3,
+      "avg_cores_used": 0.9992032967032967,
+      "peak_cores_used": 1.173,
+      "result": {
+        "count": 235679948,
+        "median": -0.00013099024363327771
+      },
+      "metadata": {
+        "bytes": 942719795
+      },
+      "error": null
+    },
+    {
+      "category": "memory_bound",
+      "name": "boolean-mask",
+      "description": "Boolean gather over a large float32 vector with wide memory traffic.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 1.4931622500298545,
+      "peak_mem_gb": 2.133884928,
+      "avg_mem_gb": 1.8496207725714284,
+      "avg_cpu_pct": 96.90714285714286,
+      "peak_cpu_pct": 100.5,
+      "avg_cores_used": 0.9690714285714286,
+      "peak_cores_used": 1.005,
+      "result": {
+        "selected_count": 141405326,
+        "selection_ratio": 0.4999906546992412
+      },
+      "metadata": {
+        "bytes": 1131263754
+      },
+      "error": null
+    },
+    {
+      "category": "compute_bound",
+      "name": "mandelbrot",
+      "description": "Parallel Mandelbrot escape-time iteration over a dense pixel grid.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 94.55341262498405,
+      "peak_mem_gb": 0.292257792,
+      "avg_mem_gb": 0.27619226430590965,
+      "avg_cpu_pct": 296.4867902665121,
+      "peak_cpu_pct": 654.3,
+      "avg_cores_used": 2.9648679026651212,
+      "peak_cores_used": 6.542999999999999,
+      "result": {
+        "shape": [
+          4608,
+          4608
+        ],
+        "escape_mean": 3143.485907236735,
+        "escape_max": 20000
+      },
+      "metadata": {
+        "width": 4608,
+        "height": 4608,
+        "max_iter": 20000
+      },
+      "error": null
+    },
+    {
+      "category": "compute_bound",
+      "name": "monte-carlo-pi",
+      "description": "Parallel pseudo-random point-in-circle test without large memory traffic.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 99.96888429200044,
+      "peak_mem_gb": 0.29990912,
+      "avg_mem_gb": 0.29984958936268574,
+      "avg_cpu_pct": 780.6275729223996,
+      "peak_cpu_pct": 870.4,
+      "avg_cores_used": 7.806275729223996,
+      "peak_cores_used": 8.704,
+      "result": {
+        "pi_estimate": 3.14159267466,
+        "samples": 600000000000
+      },
+      "metadata": {
+        "samples": 600000000000
+      },
+      "error": null
+    },
+    {
+      "category": "compute_bound",
+      "name": "transcendentals",
+      "description": "Tight repeated sin/cos/exp/log1p loop over a cache-resident vector.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 107.17811341700144,
+      "peak_mem_gb": 0.329449472,
+      "avg_mem_gb": 0.3292746760832065,
+      "avg_cpu_pct": 645.7089802130897,
+      "peak_cpu_pct": 706.5,
+      "avg_cores_used": 6.457089802130898,
+      "peak_cores_used": 7.065,
+      "result": {
+        "checksum": 3824900.97888185,
+        "elements": 1048576,
+        "repeats": 20000
+      },
+      "metadata": {
+        "elements": 1048576,
+        "repeats": 20000
+      },
+      "error": null
+    },
+    {
+      "category": "compute_bound",
+      "name": "n-body",
+      "description": "All-pairs N-body force accumulation with O(N^2) arithmetic intensity.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 114.24859641701914,
+      "peak_mem_gb": 0.466173952,
+      "avg_mem_gb": 0.466173952,
+      "avg_cpu_pct": 787.227531340405,
+      "peak_cpu_pct": 866.4,
+      "avg_cores_used": 7.8722753134040495,
+      "peak_cores_used": 8.664,
+      "result": {
+        "mean_acceleration": 68886.76373533822,
+        "max_acceleration": 85299.12382260615,
+        "particles": 425984
+      },
+      "metadata": {
+        "particles": 425984
+      },
+      "error": null
+    },
+    {
+      "category": "compute_bound",
+      "name": "eigh",
+      "description": "Symmetric dense eigenvalue decomposition using LAPACK.",
+      "status": "ok",
+      "threads": null,
+      "wall_time_sec": 72.95820329099661,
+      "peak_mem_gb": 4.30235648,
+      "avg_mem_gb": 2.8497328589652042,
+      "avg_cpu_pct": 781.9356278366112,
+      "peak_cpu_pct": 862.8,
+      "avg_cores_used": 7.8193562783661115,
+      "peak_cores_used": 8.628,
+      "result": {
+        "min_eigenvalue": -143.22015929732981,
+        "max_eigenvalue": 143.01536169659636,
+        "size": 10240
+      },
+      "metadata": {
+        "size": 10240
+      },
+      "error": null
+    }
+  ]
+}

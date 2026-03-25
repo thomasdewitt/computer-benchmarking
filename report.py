@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import datetime
+import json
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+
+from benchmarks.harness import machine_label_from_system_info, machine_slug_from_system_info
+
+
+def load_result_files(results_dir: str | Path) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for path in sorted(Path(results_dir).glob("*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["_path"] = path
+        payloads.append(payload)
+    return payloads
+
+
+def compute_scores(rows: list[dict[str, Any]]) -> dict[str, float]:
+    """Score = 1000 / wall_time. Higher = faster."""
+    from benchmarks.harness import CATEGORY_ORDER
+
+    scores: dict[str, float] = {}
+    category_scores: dict[str, list[float]] = defaultdict(list)
+
+    for row in rows:
+        if row["status"] != "ok" or row["wall_time_sec"] <= 0:
+            continue
+        score = 1000.0 / row["wall_time_sec"]
+        scores[row["name"]] = score
+        category_scores[row["category"]].append(score)
+
+    for category in CATEGORY_ORDER:
+        values = category_scores.get(category, [])
+        if values:
+            scores[f"_category_{category}"] = float(np.exp(np.mean(np.log(values))))
+
+    overall_values = [scores[key] for key in scores if key.startswith("_category_")]
+    if overall_values:
+        scores["_overall"] = float(np.exp(np.mean(np.log(overall_values))))
+
+    return scores
+
+
+def machine_label(payload: dict[str, Any]) -> str:
+    return machine_label_from_system_info(payload["system_info"])
+
+
+def machine_key(payload: dict[str, Any]) -> tuple[str, str, str]:
+    system_info = payload["system_info"]
+    return (
+        machine_slug_from_system_info(system_info),
+        str(system_info.get("system") or "unknown"),
+        str(system_info.get("memory_total_bytes") or "unknown"),
+    )
+
+
+def run_timestamp(payload: dict[str, Any]) -> str:
+    return str(payload["system_info"].get("generated_at") or payload["_path"].stem)
+
+
+def run_profile(payload: dict[str, Any]) -> str:
+    return str(payload.get("run_metadata", {}).get("profile", "default"))
+
+
+def run_total_time(payload: dict[str, Any]) -> float:
+    return float(
+        sum(row["wall_time_sec"] for row in payload["results"] if row["status"] == "ok")
+    )
+
+
+def latest_runs_by_machine_profile(
+    payloads: list[dict[str, Any]],
+) -> dict[tuple[str, tuple[str, str, str]], dict[str, Any]]:
+    latest: dict[tuple[str, tuple[str, str, str]], dict[str, Any]] = {}
+    for payload in payloads:
+        key = (run_profile(payload), machine_key(payload))
+        current = latest.get(key)
+        if current is None or run_timestamp(payload) > run_timestamp(current):
+            latest[key] = payload
+    return latest
+
+
+def _format_score_summary(scores: dict[str, float]) -> str:
+    from benchmarks.harness import CATEGORY_ORDER
+
+    lines = [
+        "| Category | Score |",
+        "| --- | ---: |",
+    ]
+    for category in CATEGORY_ORDER:
+        key = f"_category_{category}"
+        if key in scores:
+            lines.append(f"| {category.replace('_', ' ').title()} | {scores[key]:,.0f} |")
+    lines.append(f"| **Overall** | **{scores.get('_overall', 0.0):,.0f}** |")
+    return "\n".join(lines)
+
+
+def _format_system_table(system_info: dict[str, Any]) -> str:
+    rows = [
+        ("Machine", machine_label_from_system_info(system_info)),
+        ("System", system_info["system"]),
+        ("Architecture", system_info["machine"]),
+        ("Processor", system_info["processor"]),
+    ]
+    if system_info.get("chip"):
+        rows.append(("Chip", system_info["chip"]))
+    if system_info.get("model_name"):
+        rows.append(("Model", system_info["model_name"]))
+    rows.extend(
+        [
+            ("Logical Cores", system_info["logical_cores"]),
+            ("Physical Cores", system_info["physical_cores"]),
+            ("Python", system_info["python"]),
+            ("Torch", system_info["torch_version"]),
+            ("RAM Total (GB)", f"{system_info['memory_total_bytes'] / 1e9:.1f}"),
+        ]
+    )
+    lines = ["| Key | Value |", "| --- | --- |"]
+    for key, value in rows:
+        lines.append(f"| {key} | {value} |")
+    return "\n".join(lines)
+
+
+def _format_results_table(rows: list[dict[str, Any]], scores: dict[str, float]) -> str:
+    lines = [
+        "| Benchmark | Status | Time (s) | Score | Peak Mem (GB) | Avg CPU (%) |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {row['name']} | {row['status']} | {row['wall_time_sec']:.2f} | "
+            f"{scores.get(row['name'], 0.0):.0f} | {row['peak_mem_gb']:.2f} | "
+            f"{row['avg_cpu_pct']:.0f} |"
+        )
+    return "\n".join(lines)
+
+
+def generate_report(
+    results_dir: str | Path = "results",
+    output_path: str | Path = "RESULTS.md",
+) -> Path:
+    from benchmarks.harness import CATEGORY_ORDER
+
+    output_path = Path(output_path)
+    payloads = load_result_files(results_dir)
+
+    if not payloads:
+        output_path.write_text("# Benchmark Run Log\n\nNo result files found.\n", encoding="utf-8")
+        return output_path
+
+    payloads = sorted(
+        payloads,
+        key=lambda payload: (run_timestamp(payload), payload["_path"].name),
+    )
+
+    lines = [
+        "# Benchmark Run Log",
+        "",
+        f"*Generated: {datetime.now().isoformat(timespec='seconds')}*",
+        "",
+        "This file is an append-only view over all saved JSON result files.",
+        "",
+        "## Run Index",
+        "",
+        "| Timestamp | Machine | Profile | Overall Score | Total Time (s) | Result File |",
+        "| --- | --- | --- | ---: | ---: | --- |",
+    ]
+
+    for payload in payloads:
+        scores = compute_scores(payload["results"])
+        lines.append(
+            f"| {run_timestamp(payload)} | {machine_label(payload)} | "
+            f"{run_profile(payload)} | {scores.get('_overall', 0.0):,.0f} | "
+            f"{run_total_time(payload):.1f} | `{payload['_path'].name}` |"
+        )
+
+    lines.extend(["", "## Detailed Runs", ""])
+
+    for payload in payloads:
+        scores = compute_scores(payload["results"])
+        grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for row in payload["results"]:
+            grouped[row["category"]].append(row)
+
+        lines.extend(
+            [
+                "<details>",
+                (
+                    f"<summary>{run_timestamp(payload)} | {machine_label(payload)} | "
+                    f"{run_profile(payload)} | overall {scores.get('_overall', 0.0):,.0f}</summary>"
+                ),
+                "",
+                _format_system_table(payload["system_info"]),
+                "",
+                _format_score_summary(scores),
+                "",
+            ]
+        )
+
+        for category in CATEGORY_ORDER:
+            rows = grouped.get(category, [])
+            if not rows:
+                continue
+            lines.extend(
+                [
+                    f"### {category.replace('_', ' ').title()}",
+                    "",
+                    _format_results_table(rows, scores),
+                    "",
+                ]
+            )
+
+        lines.extend(
+            [
+                f"Result File: `{payload['_path'].name}`",
+                "",
+                "</details>",
+                "",
+            ]
+        )
+
+    output_path.write_text("\n".join(lines), encoding="utf-8")
+    return output_path
+
+
+if __name__ == "__main__":
+    generate_report()

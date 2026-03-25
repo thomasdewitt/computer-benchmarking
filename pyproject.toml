@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "benchmarking-suite"
+version = "0.1.0"
+description = "CPU benchmark suite for scientific Python workloads"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy",
+  "scipy",
+  "numba",
+  "torch",
+  "matplotlib",
+  "psutil",
+]
+
+[tool.setuptools.packages.find]
+include = ["benchmarks*"]
