@@ -4,5 +4,3 @@ numba
 torch
 matplotlib
 psutil
-scaleinvariance==0.8.0
-objscale==0.2.3
